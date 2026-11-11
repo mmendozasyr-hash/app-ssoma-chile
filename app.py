@@ -24,7 +24,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-MODELO_GEMINI = "gemini-1.5-flash"
+MODELO_GEMINI = "gemini-2.5-flash"
 
 CATALOGO: Dict[str, List[str]] = {
     "1. Operativos": [
@@ -138,11 +138,11 @@ Detalles operativos adicionales: {detalles}
 
 
 def obtener_api_key() -> str:
-  try:
-    key = st.secrets.get("GEMINI_API_KEY", "")
-  except Exception:
-    key = ""
-  return key or os.getenv("GEMINI_API_KEY", "")
+    try:
+        key = st.secrets.get("GEMINI_API_KEY", "")
+    except Exception:
+        key = ""
+    return key or os.getenv("GEMINI_API_KEY", "")
 
 
 def generar_documento(
@@ -153,178 +153,178 @@ def generar_documento(
     actividad: str,
     detalles: str,
 ) -> str:
-  client = genai.Client(api_key=api_key)
-  prompt = PROMPT_MAESTRO.format(
-      categoria=categoria,
-      documento=documento,
-      sector=sector,
-      actividad=actividad,
-      detalles=detalles.strip()
-      or "No se proporcionaron detalles adicionales.",
-      marco_normativo=MARCO_NORMATIVO,
-  )
-  response = client.models.generate_content(
-      model=MODELO_GEMINI,
-      contents=prompt,
-      config=types.GenerateContentConfig(
-          temperature=0.25,
-          top_p=0.85,
-          max_output_tokens=8192,
-      ),
-  )
-  texto = (response.text or "").strip()
-  if not texto:
-    raise RuntimeError("Gemini no devolvió respuesta.")
-  return texto
+    client = genai.Client(api_key=api_key)
+    prompt = PROMPT_MAESTRO.format(
+        categoria=categoria,
+        documento=documento,
+        sector=sector,
+        actividad=actividad,
+        detalles=detalles.strip()
+        or "No se proporcionaron detalles adicionales.",
+        marco_normativo=MARCO_NORMATIVO,
+    )
+    response = client.models.generate_content(
+        model=MODELO_GEMINI,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=0.25,
+            top_p=0.85,
+            max_output_tokens=8192,
+        ),
+    )
+    texto = (response.text or "").strip()
+    if not texto:
+        raise RuntimeError("Gemini no devolvió respuesta.")
+    return texto
 
 
 def limpiar_nombre_archivo(texto: str) -> str:
-  texto = texto.lower().strip()
-  texto = re.sub(r"[^a-z0-9áéíóúñ]+", "_", texto)
-  texto = texto.strip("_")
-  return texto[:70] or "documento_ssoma"
+    texto = texto.lower().strip()
+    texto = re.sub(r"[^a-z0-9áéíóúñ]+", "_", texto)
+    texto = texto.strip("_")
+    return texto[:70] or "documento_ssoma"
 
 
 def markdown_a_docx(markdown_text: str, metadata: dict) -> bytes:
-  doc = Document()
-  section = doc.sections[0]
-  section.top_margin = Inches(0.7)
-  section.bottom_margin = Inches(0.7)
-  section.left_margin = Inches(0.8)
-  section.right_margin = Inches(0.8)
+    doc = Document()
+    section = doc.sections[0]
+    section.top_margin = Inches(0.7)
+    section.bottom_margin = Inches(0.7)
+    section.left_margin = Inches(0.8)
+    section.right_margin = Inches(0.8)
 
-  styles = doc.styles
-  styles["Normal"].font.name = "Arial"
-  styles["Normal"].font.size = Pt(9.5)
-  styles["Normal"].paragraph_format.space_after = Pt(4)
+    styles = doc.styles
+    styles["Normal"].font.name = "Arial"
+    styles["Normal"].font.size = Pt(9.5)
+    styles["Normal"].paragraph_format.space_after = Pt(4)
 
-  title = doc.add_heading("DOCUMENTACIÓN TÉCNICA SSOMA", level=0)
-  title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title = doc.add_heading("DOCUMENTACIÓN TÉCNICA SSOMA", level=0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-  table = doc.add_table(rows=0, cols=2)
-  table.style = "Table Grid"
-  for key, value in metadata.items():
-    cells = table.add_row().cells
-    cells[0].text = str(key)
-    cells[1].text = str(value)
-    for run in cells[0].paragraphs[0].runs:
-      run.bold = True
-  doc.add_paragraph()
+    table = doc.add_table(rows=0, cols=2)
+    table.style = "Table Grid"
+    for key, value in metadata.items():
+        cells = table.add_row().cells
+        cells[0].text = str(key)
+        cells[1].text = str(value)
+        for run in cells[0].paragraphs[0].runs:
+            run.bold = True
+    doc.add_paragraph()
 
-  in_table = False
-  table_rows = []
-
-  def flush_table():
-    nonlocal table_rows
-    if not table_rows:
-      return
-    parsed = [
-        [c.strip() for c in row.strip().strip("|").split("|")]
-        for row in table_rows
-    ]
-    parsed = [
-        r
-        for r in parsed
-        if not all(re.fullmatch(r":?-{3,}:?", c or "-") for c in r)
-    ]
-    if parsed:
-      cols = max(len(r) for r in parsed)
-      t = doc.add_table(rows=0, cols=cols)
-      t.style = "Table Grid"
-      for ridx, row in enumerate(parsed):
-        cells = t.add_row().cells
-        for cidx in range(cols):
-          cells[cidx].text = row[cidx] if cidx < len(row) else ""
-          if ridx == 0:
-            for run in cells[cidx].paragraphs[0].runs:
-              run.bold = True
+    in_table = False
     table_rows = []
 
-  for raw_line in markdown_text.splitlines():
-    line = raw_line.strip()
-    if line.startswith("|") and line.endswith("|"):
-      in_table = True
-      table_rows.append(line)
-      continue
+    def flush_table():
+        nonlocal table_rows
+        if not table_rows:
+            return
+        parsed = [
+            [c.strip() for c in row.strip().strip("|").split("|")]
+            for row in table_rows
+        ]
+        parsed = [
+            r
+            for r in parsed
+            if not all(re.fullmatch(r":?-{3,}:?", c or "-") for c in r)
+        ]
+        if parsed:
+            cols = max(len(r) for r in parsed)
+            t = doc.add_table(rows=0, cols=cols)
+            t.style = "Table Grid"
+            for ridx, row in enumerate(parsed):
+                cells = t.add_row().cells
+                for cidx in range(cols):
+                    cells[cidx].text = row[cidx] if cidx < len(row) else ""
+                    if ridx == 0:
+                        for run in cells[cidx].paragraphs[0].runs:
+                            run.bold = True
+        table_rows = []
+
+    for raw_line in markdown_text.splitlines():
+        line = raw_line.strip()
+        if line.startswith("|") and line.endswith("|"):
+            in_table = True
+            table_rows.append(line)
+            continue
+        if in_table:
+            flush_table()
+            in_table = False
+
+        if not line:
+            doc.add_paragraph()
+        elif line.startswith("### "):
+            doc.add_heading(line[4:], level=3)
+        elif line.startswith("## "):
+            doc.add_heading(line[3:], level=2)
+        elif line.startswith("# "):
+            doc.add_heading(line[2:], level=1)
+        elif line.startswith("- ") or line.startswith("* "):
+            doc.add_paragraph(line[2:], style="List Bullet")
+        elif line in ("---", "***"):
+            p = doc.add_paragraph("─" * 50)
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        else:
+            plain = re.sub(r"\*\*(.*?)\*\*", r"\1", line)
+            plain = re.sub(r"\*(.*?)\*", r"\1", plain)
+            doc.add_paragraph(plain)
+
     if in_table:
-      flush_table()
-      in_table = False
+        flush_table()
 
-    if not line:
-      doc.add_paragraph()
-    elif line.startswith("### "):
-      doc.add_heading(line[4:], level=3)
-    elif line.startswith("## "):
-      doc.add_heading(line[3:], level=2)
-    elif line.startswith("# "):
-      doc.add_heading(line[2:], level=1)
-    elif line.startswith("- ") or line.startswith("* "):
-      doc.add_paragraph(line[2:], style="List Bullet")
-    elif line in ("---", "***"):
-      p = doc.add_paragraph("─" * 50)
-      p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    else:
-      plain = re.sub(r"\*\*(.*?)\*\*", r"\1", line)
-      plain = re.sub(r"\*(.*?)\*", r"\1", plain)
-      doc.add_paragraph(plain)
-
-  if in_table:
-    flush_table()
-
-  buffer = io.BytesIO()
-  doc.save(buffer)
-  return buffer.getvalue()
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    return buffer.getvalue()
 
 
 def generar_excel(markdown_text: str, metadata: dict) -> bytes:
-  buffer = io.BytesIO()
-  with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-    df_meta = pd.DataFrame(
-        [{"Campo": k, "Valor": v} for k, v in metadata.items()]
-    )
-    df_meta.to_excel(writer, index=False, sheet_name="Identificación")
-
-    lineas = markdown_text.splitlines()
-    lineas_tabla = [l for l in lineas if l.startswith("|") and l.endswith("|")]
-
-    if len(lineas_tabla) >= 2:
-      headers = [
-          c.strip() for c in lineas_tabla[0].split("|")[1:-1] if c.strip() != ""
-      ]
-      filas = []
-      for linea in lineas_tabla[1:]:
-        if "---" in linea:
-          continue
-        cols = [c.strip() for c in linea.split("|")[1:-1]]
-        if len(cols) == len(headers):
-          filas.append(cols)
-      if filas:
-        df_matriz = pd.DataFrame(filas, columns=headers)
-        df_matriz.to_excel(writer, index=False, sheet_name="Matriz_SSOMA")
-
-    filas_doc = []
-    for num, l in enumerate(lineas, start=1):
-      limpio = l.strip()
-      if limpio:
-        filas_doc.append({"N°": num, "Contenido": limpio})
-    pd.DataFrame(filas_doc).to_excel(
-        writer, index=False, sheet_name="Texto_Completo"
-    )
-
-    for ws in writer.book.worksheets:
-      ws.freeze_panes = "A2"
-      for cell in ws[1]:
-        cell.font = Font(bold=True, color="FFFFFF")
-        cell.fill = PatternFill("solid", fgColor="1F4E78")
-      for col in ws.columns:
-        max_len = max(
-            (len(str(c.value)) for c in col if c.value is not None), default=10
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        df_meta = pd.DataFrame(
+            [{"Campo": k, "Valor": v} for k, v in metadata.items()]
         )
-        ws.column_dimensions[get_column_letter(col[0].column)].width = min(
-            max(max_len + 2, 12), 60
+        df_meta.to_excel(writer, index=False, sheet_name="Identificación")
+
+        lineas = markdown_text.splitlines()
+        lineas_tabla = [l for l in lineas if l.startswith("|") and l.endswith("|")]
+
+        if len(lineas_tabla) >= 2:
+            headers = [
+                c.strip() for c in lineas_tabla[0].split("|")[1:-1] if c.strip() != ""
+            ]
+            filas = []
+            for linea in lineas_tabla[1:]:
+                if "---" in linea:
+                    continue
+                cols = [c.strip() for c in linea.split("|")[1:-1]]
+                if len(cols) == len(headers):
+                    filas.append(cols)
+            if filas:
+                df_matriz = pd.DataFrame(filas, columns=headers)
+                df_matriz.to_excel(writer, index=False, sheet_name="Matriz_SSOMA")
+
+        filas_doc = []
+        for num, l in enumerate(lineas, start=1):
+            limpio = l.strip()
+            if limpio:
+                filas_doc.append({"N°": num, "Contenido": limpio})
+        pd.DataFrame(filas_doc).to_excel(
+            writer, index=False, sheet_name="Texto_Completo"
         )
 
-  return buffer.getvalue()
+        for ws in writer.book.worksheets:
+            ws.freeze_panes = "A2"
+            for cell in ws[1]:
+                cell.font = Font(bold=True, color="FFFFFF")
+                cell.fill = PatternFill("solid", fgColor="1F4E78")
+            for col in ws.columns:
+                max_len = max(
+                    (len(str(c.value)) for c in col if c.value is not None), default=10
+                )
+                ws.column_dimensions[get_column_letter(col[0].column)].width = min(
+                    max(max_len + 2, 12), 60
+                )
+
+    return buffer.getvalue()
 
 
 # ---------------------------------------------------------------------
@@ -337,25 +337,25 @@ st.caption(
 )
 
 with st.sidebar:
-  st.header("⚙️ Configuración")
-  st.markdown(f"**Motor:** `Google Gemini 1.5 Flash`")
-  st.info(
-      "Los documentos son borradores técnicos y requieren revisión del"
-      " Experto en Prevención de Riesgos antes de su aprobación."
-  )
+    st.header("⚙️ Configuración")
+    st.markdown(f"**Motor:** `Google Gemini 2.5 Flash`")
+    st.info(
+        "Los documentos son borradores técnicos y requieren revisión del"
+        " Experto en Prevención de Riesgos antes de su aprobación."
+    )
 
 col1, col2 = st.columns([1, 1])
 
 with col1:
-  categoria = st.selectbox("1. Categoría documental", list(CATALOGO.keys()))
-  documento = st.selectbox("2. Documento específico", CATALOGO[categoria])
+    categoria = st.selectbox("1. Categoría documental", list(CATALOGO.keys()))
+    documento = st.selectbox("2. Documento específico", CATALOGO[categoria])
 
 with col2:
-  sector = st.selectbox("3. Sector económico", SECTORES)
-  actividad = st.text_input(
-      "4. Actividad o puesto de trabajo",
-      placeholder="Ej: Mantención preventiva de camiones en taller",
-  )
+    sector = st.selectbox("3. Sector económico", SECTORES)
+    actividad = st.text_input(
+        "4. Actividad o puesto de trabajo",
+        placeholder="Ej: Mantención preventiva de camiones en taller",
+    )
 
 detalles = st.text_area(
     "5. Detalles operativos adicionales",
@@ -368,8 +368,8 @@ detalles = st.text_area(
 
 api_key = obtener_api_key()
 if not api_key:
-  st.warning("Configura tu API Key de Gemini para operar.")
-  api_key = st.text_input("Google Gemini API Key", type="password")
+    st.warning("Configura tu API Key de Gemini para operar.")
+    api_key = st.text_input("Google Gemini API Key", type="password")
 
 generar = st.button(
     "🚀 Generar Documento SSOMA",
@@ -379,70 +379,70 @@ generar = st.button(
 )
 
 if generar:
-  with st.spinner("Generando documento bajo normativa chilena vigente..."):
-    try:
-      resultado = generar_documento(
-          api_key=api_key.strip(),
-          categoria=categoria,
-          documento=documento,
-          sector=sector,
-          actividad=actividad.strip(),
-          detalles=detalles,
-      )
-      st.session_state["documento_ssoma"] = resultado
-      st.session_state["metadata_ssoma"] = {
-          "Categoría": categoria,
-          "Documento": documento,
-          "Sector": sector,
-          "Actividad": actividad.strip(),
-          "Fecha": datetime.now().strftime("%d-%m-%Y %H:%M"),
-      }
-    except Exception as exc:
-      st.error(f"Error al generar documento: {exc}")
+    with st.spinner("Generando documento bajo normativa chilena vigente..."):
+        try:
+            resultado = generar_documento(
+                api_key=api_key.strip(),
+                categoria=categoria,
+                documento=documento,
+                sector=sector,
+                actividad=actividad.strip(),
+                detalles=detalles,
+            )
+            st.session_state["documento_ssoma"] = resultado
+            st.session_state["metadata_ssoma"] = {
+                "Categoría": categoria,
+                "Documento": documento,
+                "Sector": sector,
+                "Actividad": actividad.strip(),
+                "Fecha": datetime.now().strftime("%d-%m-%Y %H:%M"),
+            }
+        except Exception as exc:
+            st.error(f"Error al generar documento: {exc}")
 
 if "documento_ssoma" in st.session_state:
-  st.divider()
-  st.subheader("Documento Generado (Editable en pantalla)")
+    st.divider()
+    st.subheader("Documento Generado (Editable en pantalla)")
 
-  resultado_editado = st.text_area(
-      "Revisa o modifica el texto antes de exportar:",
-      value=st.session_state["documento_ssoma"],
-      height=500,
-  )
-  st.session_state["documento_ssoma"] = resultado_editado
-  metadata = st.session_state.get("metadata_ssoma", {})
-  nombre_base = limpiar_nombre_archivo(
-      f"{metadata.get('Documento', 'doc')}_{metadata.get('Actividad', 'ssoma')}"
-  )
+    resultado_editado = st.text_area(
+        "Revisa o modifica el texto antes de exportar:",
+        value=st.session_state["documento_ssoma"],
+        height=500,
+    )
+    st.session_state["documento_ssoma"] = resultado_editado
+    metadata = st.session_state.get("metadata_ssoma", {})
+    nombre_base = limpiar_nombre_archivo(
+        f"{metadata.get('Documento', 'doc')}_{metadata.get('Actividad', 'ssoma')}"
+    )
 
-  c1, c2, c3 = st.columns(3)
-  with c1:
-    st.download_button(
-        "📄 Descargar TXT / Markdown",
-        data=resultado_editado.encode("utf-8"),
-        file_name=f"{nombre_base}.txt",
-        mime="text/plain",
-        use_container_width=True,
-    )
-  with c2:
-    docx_bytes = markdown_a_docx(resultado_editado, metadata)
-    st.download_button(
-        "📝 Descargar Word (.docx)",
-        data=docx_bytes,
-        file_name=f"{nombre_base}.docx",
-        mime=(
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        ),
-        use_container_width=True,
-    )
-  with c3:
-    xlsx_bytes = generar_excel(resultado_editado, metadata)
-    st.download_button(
-        "📊 Descargar Excel (.xlsx)",
-        data=xlsx_bytes,
-        file_name=f"{nombre_base}.xlsx",
-        mime=(
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        ),
-        use_container_width=True,
-    )
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.download_button(
+            "📄 Descargar TXT / Markdown",
+            data=resultado_editado.encode("utf-8"),
+            file_name=f"{nombre_base}.txt",
+            mime="text/plain",
+            use_container_width=True,
+        )
+    with c2:
+        docx_bytes = markdown_a_docx(resultado_editado, metadata)
+        st.download_button(
+            "📝 Descargar Word (.docx)",
+            data=docx_bytes,
+            file_name=f"{nombre_base}.docx",
+            mime=(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            ),
+            use_container_width=True,
+        )
+    with c3:
+        xlsx_bytes = generar_excel(resultado_editado, metadata)
+        st.download_button(
+            "📊 Descargar Excel (.xlsx)",
+            data=xlsx_bytes,
+            file_name=f"{nombre_base}.xlsx",
+            mime=(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            ),
+            use_container_width=True,
+        )
