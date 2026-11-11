@@ -24,7 +24,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-MODELO_GEMINI = "gemini-2.5-flash"
+MODELO_GEMINI = "gemini-3.8-flash"
 
 CATALOGO: Dict[str, List[str]] = {
     "1. Operativos": [
@@ -338,7 +338,7 @@ st.caption(
 
 with st.sidebar:
     st.header("⚙️ Configuración")
-    st.markdown(f"**Motor:** `Google Gemini 2.5 Flash`")
+    st.markdown(f"**Motor:** `Google Gemini 3.8 Flash`")
     st.info(
         "Los documentos son borradores técnicos y requieren revisión del"
         " Experto en Prevención de Riesgos antes de su aprobación."
