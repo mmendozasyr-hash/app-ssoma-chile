@@ -1,6 +1,7 @@
 import io
 import os
 import re
+import time
 from datetime import datetime
 from typing import Dict, List
 
@@ -163,19 +164,33 @@ def generar_documento(
         or "No se proporcionaron detalles adicionales.",
         marco_normativo=MARCO_NORMATIVO,
     )
-    response = client.models.generate_content(
-        model=MODELO_GEMINI,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.25,
-            top_p=0.85,
-            max_output_tokens=8192,
-        ),
-    )
-    texto = (response.text or "").strip()
-    if not texto:
-        raise RuntimeError("Gemini no devolvió respuesta.")
-    return texto
+    
+    # Sistema de reintentos automáticos ante saturación temporal (Error 503)
+    ultimo_error = None
+    for intento in range(3):
+        try:
+            response = client.models.generate_content(
+                model=MODELO_GEMINI,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.25,
+                    top_p=0.85,
+                    max_output_tokens=8192,
+                ),
+            )
+            texto = (response.text or "").strip()
+            if texto:
+                return texto
+        except Exception as e:
+            ultimo_error = e
+            error_str = str(e)
+            if "503" in error_str or "UNAVAILABLE" in error_str or "high demand" in error_str:
+                time.sleep(3 * (intento + 1))  # Pausa progresiva de espera: 3s, 6s, 9s
+                continue
+            else:
+                raise e
+                
+    raise RuntimeError(f"Los servidores están experimentando alta demanda (Error 503). Por favor, intenta nuevamente en un momento. Detalle: {ultimo_error}")
 
 
 def limpiar_nombre_archivo(texto: str) -> str:
@@ -234,12 +249,11 @@ def markdown_a_docx(markdown_text: str, metadata: dict) -> bytes:
             for ridx, row in enumerate(parsed):
                 cells = t.add_row().cells
                 for cidx in range(cols):
-                    # AQUÍ ESTÁ LA CORRECCIÓN: Limpiamos y reemplazamos el <br>
+                    # LIMPIEZA DE ETIQUETAS HTML <br> PARA WORD
                     texto_celda = row[cidx] if cidx < len(row) else ""
                     texto_celda = texto_celda.replace("<br>", "\n")
                     
                     cells[cidx].text = texto_celda
-                    
                     if ridx == 0:
                         for run in cells[cidx].paragraphs[0].runs:
                             run.bold = True
