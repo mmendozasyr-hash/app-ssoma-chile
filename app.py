@@ -366,11 +366,32 @@ with st.sidebar:
 col1, col2 = st.columns([1, 1])
 
 with col1:
-    categoria = st.selectbox("1. Categoría documental", list(CATALOGO.keys()))
-    documento = st.selectbox("2. Documento específico", CATALOGO[categoria])
+    # Agregamos la opción "Otro / Personalizado" al final de la lista de categorías
+    categorias_con_otro = list(CATALOGO.keys()) + ["Otro / Personalizado"]
+    categoria_sel = st.selectbox("1. Categoría documental", categorias_con_otro)
+    
+    if categoria_sel == "Otro / Personalizado":
+        categoria = st.text_input("Especifica la categoría documental:")
+        # Permitir cualquier documento personalizado si elige categoría libre
+        documento = st.text_input("2. Nombre del documento específico requerido:")
+    else:
+        categoria = categoria_sel
+        # Agregamos la opción "Otro / Especificar" al catálogo específico
+        lista_docs = CATALOGO[categoria] + ["Otro / Especificar documento"]
+        documento_sel = st.selectbox("2. Documento específico", lista_docs)
+        
+        if documento_sel == "Otro / Especificar documento":
+            documento = st.text_input("2. Escribe el documento específico que necesitas:")
+        else:
+            documento = documento_sel
 
 with col2:
-    sector = st.selectbox("3. Sector económico", SECTORES)
+    sector_sel = st.selectbox("3. Sector económico", SECTORES + ["Otro / Especificar"])
+    if sector_sel == "Otro / Especificar":
+        sector = st.text_input("Especifica el sector económico:")
+    else:
+        sector = sector_sel
+        
     actividad = st.text_input(
         "4. Actividad o puesto de trabajo",
         placeholder="Ej: Mantención preventiva de camiones en taller",
