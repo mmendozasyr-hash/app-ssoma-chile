@@ -234,7 +234,12 @@ def markdown_a_docx(markdown_text: str, metadata: dict) -> bytes:
             for ridx, row in enumerate(parsed):
                 cells = t.add_row().cells
                 for cidx in range(cols):
-                    cells[cidx].text = row[cidx] if cidx < len(row) else ""
+                    # AQUÍ ESTÁ LA CORRECCIÓN: Limpiamos y reemplazamos el <br>
+                    texto_celda = row[cidx] if cidx < len(row) else ""
+                    texto_celda = texto_celda.replace("<br>", "\n")
+                    
+                    cells[cidx].text = texto_celda
+                    
                     if ridx == 0:
                         for run in cells[cidx].paragraphs[0].runs:
                             run.bold = True
